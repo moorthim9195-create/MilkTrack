@@ -1,0 +1,50 @@
+name: Build MilkTrack Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'MilkTrack_Flutter_Android_iOS_Web_Local.zip'
+      - '.github/workflows/build-android.yml'
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Extract MilkTrack source
+        run: |
+          unzip -q MilkTrack_Flutter_Android_iOS_Web_Local.zip -d source
+          find source -maxdepth 3 -name pubspec.yaml -print
+          PROJECT_DIR="$(dirname "$(find source -maxdepth 3 -name pubspec.yaml -print -quit)")"
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+
+      - name: Get Flutter packages
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: flutter pub get
+
+      - name: Build release APK
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: flutter build apk --release
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: MilkTrack-Android-APK
+          path: ${{ env.PROJECT_DIR }}/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 7
